@@ -1,11 +1,11 @@
-/*  dyn.h - v0.1
+/*  dyn.h - v0.1 - AyeArem 2025 - inspired by stb_ds
 
     Header only file for dynamic arrays
 
     To use implementation, it's on a per type basis. Write `dynimpl(type T, typename Tn);` where T is the type of the elements
     in the dynamic array and Tn is syntax safe name of the type. For example `dynimpl(const char*, string);`
 
-    NOTE: all definitions can be used either like `fn_name(type T)` or `fn_nameT()` EXCEPT `dynimpl(T)`
+    NOTE: all definitions can be used either like `fn_name(type T)` or `fn_nameT()` EXCEPT `dynimpl(T, Tn)`
     The main reason for this is to allow compound literals to work since they don't in macros
 
     Types include:
@@ -24,14 +24,17 @@
         dynheader:
             DynHeader *dynheader(Dyn(T) arr);
                 Returns the header
+                NOTE: You should pretty much never call `dynheader(arr)` yourself since there's `dynlen` and `dyncap`.
 
         dynlen:
             size_t &dynlen(Dyn(T) arr);
-                Returns a reference to the length (NOTE: this means doing `dynlen(arr)++` WILL update the len in the header)
+                Returns a reference to the length
+                NOTE: this means doing `dynlen(arr)++` WILL update the len in the header
 
         dyncap:
             size_t &dyncap(Dyn(T) arr);
-                Returns a reference to the capacity (NOTE: this means doing `dyncap(arr)++` WILL update the cap in the header)
+                Returns a reference to the capacity
+                NOTE: this means doing `dyncap(arr)++` WILL update the cap in the header
 
         dynfree:
             void dynfree(Dyn(T) arr);
@@ -39,8 +42,8 @@
 
         dynpush:
             bool dynpush(typename Tn, Dyn(T) *arr, T item);
-                Pushes an element to the end of the array
-                (NOTE: This MAY change where the array pointer points to, therefore any pointer stored from the array may be invalid)
+                Pushes an element to the end of the array, returns false if failed
+                NOTE: This MAY change where the array pointer points to, therefore any pointer stored from the array may be invalid
 
         dynpop:
             T dynpop(typename Tn, Dyn(T) arr);
@@ -48,29 +51,65 @@
 
         dynremove:
             T dynremove(typename Tn, Dyn(T) arr, size_t index);
-                Removes an element by index and returns it
+                Removes an element by index, moving the rest of the elements over and returns it
 
         dynclear:
             void dynclear(typename Tn, Dyn(T) arr);
-                Clears the array elements (NOTE: This just sets .len to 0 so the elements still exist but will be overwritten)
+                Clears the array elements
+                NOTE: This just sets .len to 0 so the elements still exist but will be overwritten
+
+    Allocators:
+        By default, dyn.h uses malloc, realloc and free from but you can use your own by changing redefining DynMalloc, DynRealloc and DynFree.
+
+        DynMalloc:
+            void *DynMalloc(size_t bytes);
+                Defaults to malloc
+
+                To change to a compatible allocator (foo), write:
+                #undef DynMalloc
+                #define DynMalloc foo
+
+        DynRealloc:
+            void *DynRealloc(void* ptr, size_t bytes);
+                Defaults to realloc
+
+                To change to a compatible reallocator (bar), write:
+                #undef DynMalloc
+                #define DynMalloc foo
+
+        DynFree:
+            void DynFree(void* ptr);
+                Defaults to free
+
+                To change to a compatible free...er (baz), write:
+                #undef DynMalloc
+                #define DynMalloc baz
 */
 
 #ifndef DYN_H
 #define DYN_H
+
+/* INCLUDES */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
 
+/* ALLOCATOR */
+#define DynMalloc malloc
+#define DynRealloc realloc
+#define DynFree free
+
+/* IMPLEMENTATION */
 #define Dyn(T) T*
 #define dynheader(arr) ((DynHeader*)((arr)) - 1)
 #define dynlen(arr) (dynheader((arr))->len)
 #define dyncap(arr) (dynheader((arr))->cap)
-#define dynfree(arr) (free(dynheader((arr))))
-#define dynpush(Tn, arr, item) dynpush##Tn((arr), (item))
-#define dynpop(Tn, arr) dynpop##Tn((arr))
-#define dynremove(Tn, arr, index) dynremove##Tn((arr), (index))
-#define dynclear(Tn, arr) dynclear##Tn((arr))
+#define dynfree(arr) (DynFree(dynheader((arr))))
+#define dynpush(Tn, arr, item) (dynpush##Tn((arr), (item)))
+#define dynpop(Tn, arr) (dynpop##Tn((arr)))
+#define dynremove(Tn, arr, index) (dynremove##Tn((arr), (index)))
+#define dynclear(Tn, arr) (dynclear##Tn((arr)))
 
 typedef struct DynHeader {
     size_t len;
@@ -81,12 +120,12 @@ typedef struct DynHeader {
     bool dyngrow##Tn(Dyn(T) *arr) {\
         DynHeader *header;\
         if (*arr == NULL) {\
-            header = (DynHeader*)realloc(NULL, sizeof(DynHeader) + sizeof(T));\
+            header = (DynHeader*)DynMalloc(sizeof(DynHeader) + sizeof(T));\
             /* TODO: check if header == NULL */\
             header->len = 0;\
             header->cap = 1;\
         } else {\
-            header = (DynHeader*)realloc(dynheader(*arr), dyncap(*arr) * 2 * sizeof(T) + sizeof(DynHeader));\
+            header = (DynHeader*)DynRealloc(dynheader(*arr), dyncap(*arr) * 2 * sizeof(T) + sizeof(DynHeader));\
             header->cap *= 2;\
         }\
         /* TODO: check if header == NULL */\
@@ -114,4 +153,5 @@ typedef struct DynHeader {
     void dynclear##Tn(Dyn(T) arr) {\
         dynlen(arr) = 0;\
     }
+
 #endif // DYN_H
