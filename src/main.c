@@ -2,20 +2,27 @@
 #include <stddef.h>
 #include <raylib.h>
 #include <raymath.h>
+#include <string.h>
 #include "include/dyn.h"
 
-#define WIDTH 800.0f
-#define HEIGHT 600.0f
+#define WIDTH 1280.0f
+#define HEIGHT 720.0f
 
-#define ENTITY_SIZE 32.0f
+#define ENTITY_SCALE 64.0f
 
+#define PLAYER_WIDTH (ENTITY_SCALE / 2.15f)
+#define PLAYER_HEIGHT (ENTITY_SCALE)
 #define PLAYER_WALK 3.0f
 #define PLAYER_RUN 6.0f
 
+#define ZOMBIE_WIDTH (ENTITY_SCALE / 2.15f)
+#define ZOMBIE_HEIGHT (ENTITY_SCALE)
 #define ZOMBIE_START_SPEED 2.0f
 
 typedef struct Player {
     Rectangle shape;
+    Texture tex;
+    Camera2D camera;
     float speed;
 } Player;
 
@@ -32,7 +39,7 @@ typedef struct Game {
 } Game;
 
 void player_draw(Player self) {
-    DrawRectangleRec(self.shape, GREEN);
+    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
 }
 
 void player_update(Player *self) {
@@ -63,11 +70,13 @@ void player_update(Player *self) {
 
     self->shape.x += pos.x * self->speed;
     self->shape.y += pos.y * self->speed;
+
+    self->camera.target = (Vector2){self->shape.x, self->shape.y};
 }
 
 void zombie_draw(Zombie self) {
-    // DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
-    DrawTexture(self.tex, self.shape.x, self.shape.y, WHITE);
+    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
+    // DrawTexture(self.tex, self.shape.x, self.shape.y, WHITE);
 }
 
 void zombie_update(Zombie *self, Player player) {
@@ -81,24 +90,33 @@ void zombie_update(Zombie *self, Player player) {
     self->shape.y += direction.y * self->speed;
 
     if (CheckCollisionRecs(self->shape, player.shape)) {
-        printf("you should be dead lol\n");
+        printf("dead, x: %.2f, y: %.2f\n", player.shape.x, player.shape.y);
     }
 }
 
 void game_draw(Game self) {
     BeginDrawing();
     ClearBackground(BLACK);
+    BeginMode2D(self.player.camera);
+
 
     player_draw(self.player);
-    for (size_t i = 0; i < dynlen(self.zombies); i++) {
-        zombie_draw(self.zombies[i]);
+    if (self.zombies != NULL) {
+        for (size_t i = 0; i < dynlen(self.zombies); i++) {
+            zombie_draw(self.zombies[i]);
+        }
     }
 
+    EndMode2D();
     EndDrawing();
 }
 
 void game_update(Game *self) {
     player_update(&self->player);
+
+    if (self->zombies == NULL) {
+        return;
+    }
 
     // O(n^2) booooo
     for (size_t i = 0; i < dynlen(self->zombies); i++) {
@@ -112,16 +130,16 @@ void game_update(Game *self) {
             if (CheckCollisionRecs(self->zombies[j].shape, self->zombies[i].shape)) {
                 float overlap_x;
                 if (self->zombies[j].shape.x < self->zombies[i].shape.x) {
-                    overlap_x = (self->zombies[j].shape.x + ENTITY_SIZE) - self->zombies[i].shape.x;
+                    overlap_x = (self->zombies[j].shape.x + self->zombies[j].shape.width) - self->zombies[i].shape.x;
                 } else {
-                    overlap_x = (self->zombies[i].shape.x + ENTITY_SIZE) - self->zombies[j].shape.x;
+                    overlap_x = (self->zombies[i].shape.x + self->zombies[i].shape.width) - self->zombies[j].shape.x;
                 }
 
                 float overlap_y;
                 if (self->zombies[j].shape.y < self->zombies[i].shape.y) {
-                    overlap_y = (self->zombies[j].shape.y + ENTITY_SIZE) - self->zombies[i].shape.y;
+                    overlap_y = (self->zombies[j].shape.y + self->zombies[j].shape.height) - self->zombies[i].shape.y;
                 } else {
-                    overlap_y = (self->zombies[i].shape.y + ENTITY_SIZE) - self->zombies[j].shape.y;
+                    overlap_y = (self->zombies[i].shape.y + self->zombies[i].shape.height) - self->zombies[j].shape.y;
                 }
 
                 if (overlap_x < overlap_y) {
@@ -148,25 +166,35 @@ int main() {
     SetConfigFlags(FLAG_VSYNC_HINT);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
 
+    Texture player_stand_tex = LoadTexture("./src/assets/player_stand.png");
     Texture zombie_stand_tex = LoadTexture("./src/assets/zombie_stand.png");
 
     Player player = {
         .shape = {
             .x = WIDTH/2,
             .y = HEIGHT/2,
-            .width = ENTITY_SIZE,
-            .height = ENTITY_SIZE,
+            .width = PLAYER_WIDTH,
+            .height = PLAYER_HEIGHT,
         },
+        .tex = player_stand_tex,
         .speed = PLAYER_WALK,
     };
+
+    Camera2D camera = {
+        .target = {player.shape.x, player.shape.y},
+        .offset = {player.shape.x, player.shape.y},
+        .rotation = 0.0f,
+        .zoom = 1.0f,
+    };
+    player.camera = camera;
 
     Zombie *zombies = NULL;
     dynpushZombie(&zombies, (Zombie){
         .shape = ((Rectangle){
             .x = WIDTH,
             .y = HEIGHT,
-            .width = ENTITY_SIZE,
-            .height = ENTITY_SIZE,
+            .width = ZOMBIE_WIDTH,
+            .height = ZOMBIE_HEIGHT,
         }),
         .speed = ZOMBIE_START_SPEED,
         .tex = zombie_stand_tex,
@@ -175,8 +203,8 @@ int main() {
         .shape = {
             .x = 0,
             .y = 0,
-            .width = ENTITY_SIZE,
-            .height = ENTITY_SIZE,
+            .width = ZOMBIE_WIDTH,
+            .height = ZOMBIE_HEIGHT,
         },
         .speed = ZOMBIE_START_SPEED,
         .tex = zombie_stand_tex,
@@ -192,6 +220,7 @@ int main() {
         game_update(&game);
     }
 
+    UnloadTexture(player_stand_tex);
     UnloadTexture(zombie_stand_tex);
     CloseWindow();
 }
