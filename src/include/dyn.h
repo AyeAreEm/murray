@@ -116,6 +116,13 @@ typedef struct DynHeader {
     size_t cap;
 } DynHeader;
 
+#define dyndefs(T, Tn)\
+    bool dyngrow##Tn(Dyn(T) *arr);\
+    bool dynpush##Tn(Dyn(T) *arr, T item);\
+    T dynpop##Tn(Dyn(T) arr);\
+    T dynremove##Tn(Dyn(T) arr, size_t index);\
+    void dynclear##Tn(Dyn(T) arr);\
+
 #define dynimpl(T, Tn)\
     bool dyngrow##Tn(Dyn(T) *arr) {\
         DynHeader *header;\

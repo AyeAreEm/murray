@@ -1,6 +1,12 @@
 # TODO
-- Player sprite
-- Zombie sprites
-- Decoration sprites
-- Gun sfx
-- Death sfx
+## Player
+- Player animations
+- Death
+
+## Zombies
+- Zombie animations
+
+## Guns
+- Different gun types
+- Sfx
+- Sprites

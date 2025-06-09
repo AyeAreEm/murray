@@ -1,9 +1,13 @@
 #!/bin/bash
 
+build() {
+    gcc -o murray src/main.c -lraylib -lm
+}
+
 if [ "$1" == "build" ]; then
-    gcc -o murray main.c -lraylib -lm
+    build
 elif [ "$1" == "run" ]; then
-    gcc -o murray main.c -lraylib -lm
+    build
     nvidia-offload ./murray
 else
     echo invalid option $1
