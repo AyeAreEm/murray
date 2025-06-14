@@ -1,5 +1,5 @@
-#ifndef MurrayDefs
-#define MurrayDefs
+#ifndef MURRAYDEFS_H
+#define MURRAYDEFS_H
 
 #include <stdint.h>
 #include <raylib.h>
@@ -10,19 +10,41 @@ typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef size_t usize;
+
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__sun) || defined(__CYGWIN__)
+#include <sys/types.h>
+#elif defined(_WIN32) || defined(__MINGW32__)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+typedef ssize_t isize;
 
 #define WIDTH 1280.0f
 #define HEIGHT 720.0f
 
 #define ENTITY_SCALE 64.0f
 
-#define ABS(x) ((x) < 0 ? -(x) : (x))
+#define MOUSE_X(player) ((player).shape.x + (GetMouseX() - (WIDTH / 2.0f)))
+#define MOUSE_Y(player) ((player).shape.y + (GetMouseY() - (HEIGHT / 2.0f)))
+#define MOUSE_XY(player) ((Vector2){MOUSE_X((player)), MOUSE_Y((player))})
 
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
+/********** FORWARD DECLS **********/
 typedef struct Game Game;
+typedef struct Player Player;
+typedef struct Zombie Zombie;
+typedef struct Bullet Bullet;
+
+dyndefs(Zombie, Zombie);
+dyndefs(Bullet, Bullet);
+
 /********** GUN **********/
 typedef enum GunKind {
     GunPistol,
@@ -31,7 +53,13 @@ typedef enum GunKind {
 typedef struct Gun {
     GunKind kind;
     const char* name;
-    u8 fire_rate;
+
+    // stats
+    const u8 fire_rate;
+    const u32 max_mag;
+    const u32 max_reserve;
+    const u8 bullet_health;
+
     u32 mag;
     u32 reserve;
 } Gun;
@@ -39,13 +67,13 @@ typedef struct Gun {
 /********** BULLET **********/
 #define BULLET_WIDTH (ENTITY_SCALE / 6.4f)
 #define BULLET_HEIGHT (ENTITY_SCALE / 6.4f)
-#define BULLET_SPEED 2.0f
 #define BULLET_DESPAWN_DIST (WIDTH * 2.0f)
-typedef struct Player Player;
+#define BULLET_SPEED 8.0f
 
 typedef struct Bullet {
     Rectangle shape;
     Vector2 direction;
+    u8 health;
 } Bullet;
 
 void bullet_draw(Bullet self);
@@ -95,7 +123,4 @@ typedef struct Game {
 
 void game_draw(Game self);
 void game_update(Game *self);
-
-dyndefs(Zombie, Zombie);
-dyndefs(Bullet, Bullet);
-#endif // MurrayDefs
+#endif // MURRAYDEFS_H

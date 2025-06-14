@@ -1,14 +1,11 @@
 #include "include/dyn.h"
 #include "defs.h"
-#include <stdio.h>
+#include "raylib.h"
 
 void game_draw(Game self) {
     BeginDrawing();
     ClearBackground(BLACK);
     BeginMode2D(self.player.camera);
-
-
-    player_draw(self.player);
 
     if (self.bullets != NULL) {
         for (size_t i = 0; i < dynlen(self.bullets); i++) {
@@ -22,20 +19,31 @@ void game_draw(Game self) {
         }
     }
 
+    player_draw(self.player);
+
     EndMode2D();
     EndDrawing();
 }
 
 void game_update(Game *self) {
     player_update(self);
-    printf("player x: %.1f, x: %.1f\n", self->player.shape.x, self->player.shape.y);
 
     if (self->bullets != NULL) {
         for (size_t i = 0; i < dynlen(self->bullets); i++) {
             bool remove = bullet_update(&self->bullets[i], self->player);
-            printf("bullet x: %.1f, x: %.1f\n", self->bullets[i].shape.x, self->bullets[i].shape.y);
             if (remove) {
                 dynremove(Bullet, self->bullets, i);
+            }
+
+            for (size_t j = 0; j < dynlen(self->zombies); j++) {
+                if (CheckCollisionRecs(self->bullets[i].shape, self->zombies[j].shape)) {
+                    dynremove(Zombie, self->zombies, j);
+
+                    self->bullets[i].health -= 1;
+                    if (self->bullets[i].health == 0) {
+                        dynremove(Bullet, self->bullets, i);
+                    }
+                }
             }
         }
     }

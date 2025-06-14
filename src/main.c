@@ -1,8 +1,5 @@
-#include <stdio.h>
-#include <stddef.h>
 #include <raylib.h>
 #include <raymath.h>
-#include <string.h>
 #include "include/dyn.h"
 #include "defs.h"
 
@@ -12,7 +9,12 @@ dynimpl(Bullet, Bullet);
 const Gun glock = {
     .kind = GunPistol,
     .name = "Glock",
+
     .fire_rate = 5,
+    .max_mag = 24,
+    .max_reserve = 240,
+    .bullet_health = 1,
+
     .mag = 24,
     .reserve = 240,
 };

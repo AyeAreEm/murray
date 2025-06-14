@@ -1,11 +1,20 @@
+#include <stdio.h>
 #include <raylib.h>
 #include <raymath.h>
-#include <stdio.h>
 #include "include/dyn.h"
 #include "defs.h"
 
 void player_draw(Player self) {
     DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
+
+    char buffer[11];
+    int buffer_len = 11;
+    sprintf(buffer, "%d / %d", self.gun.mag, self.gun.reserve);
+
+    float font_size = 20.0f;
+    float ammo_x = self.shape.x + ((WIDTH - (float)buffer_len * font_size) - (WIDTH / 2.0f)) + font_size * 5.0f;
+    float ammo_y = self.shape.y + ((HEIGHT - font_size) - (HEIGHT / 2.0f)) - font_size * 2.0f;
+    DrawTextEx(GetFontDefault(), buffer, (Vector2){ammo_x, ammo_y}, font_size, 1.0f, WHITE);
 }
 
 Bullet player_spawn_bullet(Player *self) {
@@ -16,11 +25,12 @@ Bullet player_spawn_bullet(Player *self) {
             .x = self->shape.x + (self->shape.width / 2.0f),
             .y = self->shape.y + (self->shape.height / 2.0f),
         },
+        .health = self->gun.bullet_health,
     };
 
-    Vector2 mouse_pos = GetMousePosition();
-    printf("mouse x: %.1f, y: %.1f\n", mouse_pos.x, mouse_pos.y);
-    bullet.direction = Vector2Normalize(mouse_pos);
+    Vector2 mouse_pos = MOUSE_XY(*self);
+    Vector2 direction = Vector2Subtract(mouse_pos, (Vector2){self->shape.x, self->shape.y});
+    bullet.direction = Vector2Normalize(direction);
     return bullet;
 }
 
@@ -77,9 +87,22 @@ void player_movement(Player *self) {
     self->camera.target = (Vector2){self->shape.x, self->shape.y};
 }
 
+void player_reload(Player *self) {
+    if (IsKeyPressed(KEY_R)) {
+        u32 mag_needs = self->gun.max_mag - self->gun.mag;
+        u32 moved = MIN(mag_needs, self->gun.reserve);
+        self->gun.reserve -= moved;
+        self->gun.mag += moved;
+    }
+}
+
 void player_update(Game *game) {
-    player_movement(&game->player);
-    Bullet bullet = player_fire(&game->player);
+    Player *player = &game->player;
+
+    player_movement(player);
+    player_reload(player);
+
+    Bullet bullet = player_fire(player);
     if (bullet.shape.width == 0 && bullet.shape.height == 0) {
         return;
     }

@@ -1,5 +1,3 @@
-#include <raylib.h>
-#include <raymath.h>
 #include "defs.h"
 
 void bullet_draw(Bullet self) {

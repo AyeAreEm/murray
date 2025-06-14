@@ -13,6 +13,12 @@
         Dyn(T) -> T* (NOTE: this is if you wish to show that a particular field or variable can work with dyn.h, feel free to just do T*)
 
     Interfacing:
+        Forward Declare dynamic array
+            dyndefs(T, Tn);
+
+        Implement dynamic array
+            dynimpl(T, Tn);
+
         Declare a dynamic array
             T* arr = NULL;
 
