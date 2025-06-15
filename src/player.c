@@ -4,9 +4,7 @@
 #include "include/dyn.h"
 #include "defs.h"
 
-void player_draw(Player self) {
-    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
-
+void player_hud(Player self) {
     char buffer[11];
     int buffer_len = 11;
     sprintf(buffer, "%d / %d", self.gun.mag, self.gun.reserve);
@@ -15,6 +13,14 @@ void player_draw(Player self) {
     float ammo_x = self.shape.x + ((WIDTH - (float)buffer_len * font_size) - (WIDTH / 2.0f)) + font_size * 5.0f;
     float ammo_y = self.shape.y + ((HEIGHT - font_size) - (HEIGHT / 2.0f)) - font_size * 2.0f;
     DrawTextEx(GetFontDefault(), buffer, (Vector2){ammo_x, ammo_y}, font_size, 1.0f, WHITE);
+
+    DrawTextEx(GetFontDefault(), self.gun.name, (Vector2){ammo_x, ammo_y + font_size}, font_size, 1.5f, WHITE);
+}
+
+void player_draw(Player self) {
+    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
+
+    player_hud(self);
 }
 
 Bullet player_spawn_bullet(Player *self) {
@@ -96,8 +102,18 @@ void player_reload(Player *self) {
     }
 }
 
-void player_update(Game *game) {
-    Player *player = &game->player;
+void player_get_hit(State *state) {
+    Player *player = &state->play.player;
+
+    player->health -= 1;
+
+    if (player->health == 0) {
+        state->kind = StateGameOver;
+    }
+}
+
+void player_update(State *state) {
+    Player *player = &state->play.player;
 
     player_movement(player);
     player_reload(player);
@@ -106,5 +122,5 @@ void player_update(Game *game) {
     if (bullet.shape.width == 0 && bullet.shape.height == 0) {
         return;
     }
-    dynpush(Bullet, &game->bullets, bullet);
+    dynpush(Bullet, &state->play.bullets, bullet);
 }

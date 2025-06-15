@@ -1,7 +1,7 @@
 #!/bin/bash
 
 build() {
-    gcc -o murray src/main.c src/game.c src/player.c src/zombie.c src/bullet.c -lraylib -lm
+    gcc -o murray src/main.c src/menu.c src/game.c src/gameover.c src/player.c src/zombie.c src/bullet.c -lraylib -lm
 }
 
 if [ "$1" == "build" ]; then

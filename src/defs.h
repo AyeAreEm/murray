@@ -37,6 +37,8 @@ typedef ssize_t isize;
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 /********** FORWARD DECLS **********/
+typedef struct State State;
+typedef struct Menu Menu;
 typedef struct Game Game;
 typedef struct Player Player;
 typedef struct Zombie Zombie;
@@ -44,6 +46,7 @@ typedef struct Bullet Bullet;
 
 dyndefs(Zombie, Zombie);
 dyndefs(Bullet, Bullet);
+dyndefs(Texture, Texture);
 
 /********** GUN **********/
 typedef enum GunKind {
@@ -55,10 +58,10 @@ typedef struct Gun {
     const char* name;
 
     // stats
-    const u8 fire_rate;
-    const u32 max_mag;
-    const u32 max_reserve;
-    const u8 bullet_health;
+    u8 fire_rate;
+    u32 max_mag;
+    u32 max_reserve;
+    u8 bullet_health;
 
     u32 mag;
     u32 reserve;
@@ -86,19 +89,21 @@ bool bullet_update(Bullet *self, Player player);
 #define PLAYER_WALK 3.0f
 #define PLAYER_RUN 6.0f
 
-
 typedef struct Player {
+    Camera2D camera;
+
     Rectangle shape;
     Texture tex;
-    Camera2D camera;
+
     float speed;
     Gun gun;
+    u8 health;
 } Player;
 
 void player_draw(Player self);
-void player_update(Game *game);
+void player_update(State *state);
+void player_get_hit(State *state);
 Bullet player_fire(Player *self);
-
 
 /********** ZOMBIE **********/
 #define ZOMBIE_WIDTH (ENTITY_SCALE / 2.15f)
@@ -112,15 +117,56 @@ typedef struct Zombie {
 } Zombie;
 
 void zombie_draw(Zombie self);
-void zombie_update(Zombie *self, Player player);
+void zombie_update(Zombie *self, State *state);
 
 /********** GAME **********/
 typedef struct Game {
     Player player;
-    Zombie* zombies;
-    Bullet* bullets;
+    Zombie *zombies;
+    Bullet *bullets;
+
+    Texture *textures;
 } Game;
 
-void game_draw(Game self);
-void game_update(Game *self);
+Game game_init();
+void game_draw(State state);
+void game_update(State *state);
+
+/********** STATE **********/
+typedef enum StateKind {
+    StateMenu,
+    StatePlay,
+    StateGameOver,
+} StateKind;
+
+typedef struct Button {
+    Rectangle shape;
+    const char *text;
+} Button;
+
+typedef struct Menu {
+    Button play;
+    Button quit;
+} Menu;
+
+typedef struct GameOver {
+} GameOver;
+
+typedef struct State {
+    StateKind kind;
+    bool running;
+    union {
+        Menu menu;
+        Game play;
+        GameOver gameover;
+    };
+} State;
+
+Menu menu_init();
+void menu_draw(State state);
+void menu_update(State *state);
+
+void gameover_draw(State state);
+void gameover_update(State *state);
+
 #endif // MURRAYDEFS_H

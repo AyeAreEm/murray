@@ -13,7 +13,6 @@
 - Sprites
 
 ## Hud
-- Ammo in mag and in reserves
 - Health
 - Round No.
 
@@ -27,3 +26,5 @@
 - Bullet health?
 
 ## Hud
+- Gun name
+- Ammo in mag and in reserves
