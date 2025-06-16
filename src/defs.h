@@ -97,10 +97,17 @@ typedef struct Player {
 
     float speed;
     Gun gun;
+
+    u8 max_health;
     u8 health;
+    double regen_time;
+
+    bool in_iframe;
+    double iframe_time;
 } Player;
 
 void player_draw(Player self);
+void player_hud(Player self);
 void player_update(State *state);
 void player_get_hit(State *state);
 Bullet player_fire(Player *self);
@@ -109,13 +116,18 @@ Bullet player_fire(Player *self);
 #define ZOMBIE_WIDTH (ENTITY_SCALE / 2.15f)
 #define ZOMBIE_HEIGHT (ENTITY_SCALE)
 #define ZOMBIE_START_SPEED 2.0f
+#define ZOMBIE_BASE_HEALTH 5
 
 typedef struct Zombie {
     Rectangle shape;
     Texture tex;
     float speed;
+
+    u8 max_health;
+    u8 health;
 } Zombie;
 
+Zombie zombie_spawn(Game game, Texture tex);
 void zombie_draw(Zombie self);
 void zombie_update(Zombie *self, State *state);
 
@@ -126,6 +138,7 @@ typedef struct Game {
     Bullet *bullets;
 
     Texture *textures;
+    u16 round;
 } Game;
 
 Game game_init();

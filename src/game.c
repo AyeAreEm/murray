@@ -37,7 +37,10 @@ Game game_init() {
         .tex = player_stand_tex,
         .speed = PLAYER_WALK,
         .gun = glock,
+        .max_health = 3,
         .health = 3,
+        .in_iframe = false,
+        .iframe_time = 0.0,
     };
 
     Camera2D camera = {
@@ -48,34 +51,18 @@ Game game_init() {
     };
     player.camera = camera;
 
-    Zombie *zombies = NULL;
-    dynpushZombie(&zombies, (Zombie){
-        .shape = ((Rectangle){
-            .x = WIDTH,
-            .y = HEIGHT,
-            .width = ZOMBIE_WIDTH,
-            .height = ZOMBIE_HEIGHT,
-        }),
-        .speed = ZOMBIE_START_SPEED,
-        .tex = zombie_stand_tex,
-    });
-    dynpushZombie(&zombies, (Zombie){
-        .shape = {
-            .x = 0,
-            .y = 0,
-            .width = ZOMBIE_WIDTH,
-            .height = ZOMBIE_HEIGHT,
-        },
-        .speed = ZOMBIE_START_SPEED,
-        .tex = zombie_stand_tex,
-    });
-
     Game game = {
         .player = player,
-        .zombies = zombies,
         .bullets = NULL,
         .textures = textures,
+        .round = 1,
     };
+
+    Zombie *zombies = NULL;
+    dynpush(Zombie, &zombies, zombie_spawn(game, zombie_stand_tex));
+    dynpush(Zombie, &zombies, zombie_spawn(game, zombie_stand_tex));
+
+    game.zombies = zombies;
 
     return game;
 }
@@ -102,6 +89,8 @@ void game_draw(State state) {
     player_draw(self.player);
 
     EndMode2D();
+    player_hud(self.player);
+
     EndDrawing();
 }
 
@@ -117,9 +106,13 @@ void game_update(State *state) {
                 dynremove(Bullet, self->bullets, i);
             }
 
+            // kill zombie lol
             for (size_t j = 0; j < dynlen(self->zombies); j++) {
                 if (CheckCollisionRecs(self->bullets[i].shape, self->zombies[j].shape)) {
-                    dynremove(Zombie, self->zombies, j);
+                    self->zombies[j].health -= 1;
+                    if (self->zombies[j].health == 0) {
+                        dynremove(Zombie, self->zombies, j);
+                    }
 
                     self->bullets[i].health -= 1;
                     if (self->bullets[i].health == 0) {

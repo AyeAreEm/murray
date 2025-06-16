@@ -5,22 +5,34 @@
 #include "defs.h"
 
 void player_hud(Player self) {
-    char buffer[11];
-    int buffer_len = 11;
-    sprintf(buffer, "%d / %d", self.gun.mag, self.gun.reserve);
+    // health
+    {
+        float width = self.health * 20.0f;
+        float height = 15.0f;
+        float x = 20.0f;
+        float y = height;
 
-    float font_size = 20.0f;
-    float ammo_x = self.shape.x + ((WIDTH - (float)buffer_len * font_size) - (WIDTH / 2.0f)) + font_size * 5.0f;
-    float ammo_y = self.shape.y + ((HEIGHT - font_size) - (HEIGHT / 2.0f)) - font_size * 2.0f;
-    DrawTextEx(GetFontDefault(), buffer, (Vector2){ammo_x, ammo_y}, font_size, 1.0f, WHITE);
+        DrawRectangleRec((Rectangle){x, y, width, height}, RED);
+        DrawRectangleLinesEx((Rectangle){x, y, self.max_health * 20.0f, height}, 1.0f, WHITE);
+    }
 
-    DrawTextEx(GetFontDefault(), self.gun.name, (Vector2){ammo_x, ammo_y + font_size}, font_size, 1.5f, WHITE);
+    // gun ammo and stuff
+    {
+        char buffer[11];
+        int buffer_len = 11;
+        sprintf(buffer, "%d / %d", self.gun.mag, self.gun.reserve);
+
+        float font_size = 20.0f;
+        float x = WIDTH - ((float)buffer_len / 2.0f) * font_size;
+        float y = HEIGHT - font_size;
+        DrawTextEx(GetFontDefault(), buffer, (Vector2){x, y}, font_size, 1.0f, WHITE);
+
+        DrawTextEx(GetFontDefault(), self.gun.name, (Vector2){x, y + font_size}, font_size, 1.5f, WHITE);
+    }
 }
 
 void player_draw(Player self) {
     DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
-
-    player_hud(self);
 }
 
 Bullet player_spawn_bullet(Player *self) {
@@ -105,6 +117,14 @@ void player_reload(Player *self) {
 void player_get_hit(State *state) {
     Player *player = &state->play.player;
 
+    if (player->in_iframe) {
+        return;
+    }
+
+    player->in_iframe = true;
+    player->iframe_time = GetTime();
+
+    player->regen_time = GetTime();
     player->health -= 1;
 
     if (player->health == 0) {
@@ -117,6 +137,17 @@ void player_update(State *state) {
 
     player_movement(player);
     player_reload(player);
+
+    double time_since_hit = GetTime() - player->iframe_time;
+    if (player->in_iframe && time_since_hit > 0.5) {
+        player->in_iframe = false;
+    }
+
+    double time_since_regen = GetTime() - player->regen_time;
+    if (time_since_regen > 3.0 && player->health != player->max_health) {
+        player->regen_time = GetTime();
+        player->health += 1;
+    }
 
     Bullet bullet = player_fire(player);
     if (bullet.shape.width == 0 && bullet.shape.height == 0) {
