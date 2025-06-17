@@ -5,6 +5,7 @@
 #include <raylib.h>
 #include <raymath.h>
 #include "include/dyn.h"
+#include "include/exrand.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -25,13 +26,15 @@ typedef SSIZE_T ssize_t;
 #endif
 typedef ssize_t isize;
 
+extern bool debug_mode;
+
 #define WIDTH 1280.0f
 #define HEIGHT 720.0f
 
 #define ENTITY_SCALE 64.0f
 
-#define MOUSE_X(player) ((player).shape.x + (GetMouseX() - (WIDTH / 2.0f)))
-#define MOUSE_Y(player) ((player).shape.y + (GetMouseY() - (HEIGHT / 2.0f)))
+#define MOUSE_X(player) ((player).shape.x + (GetMousePosition().x - (WIDTH / 2.0f)))
+#define MOUSE_Y(player) ((player).shape.y + (GetMousePosition().y - (HEIGHT / 2.0f)))
 #define MOUSE_XY(player) ((Vector2){MOUSE_X((player)), MOUSE_Y((player))})
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -47,6 +50,13 @@ typedef struct Bullet Bullet;
 dyndefs(Zombie, Zombie);
 dyndefs(Bullet, Bullet);
 dyndefs(Texture, Texture);
+
+/********** TEXTURES **********/
+typedef enum TextureKind {
+    TexturePlayer = 0,
+    TextureZombie,
+    TextureCount,
+} TextureKind;
 
 /********** GUN **********/
 typedef enum GunKind {
@@ -107,7 +117,6 @@ typedef struct Player {
 } Player;
 
 void player_draw(Player self);
-void player_hud(Player self);
 void player_update(State *state);
 void player_get_hit(State *state);
 Bullet player_fire(Player *self);
@@ -134,14 +143,21 @@ void zombie_update(Zombie *self, State *state);
 /********** GAME **********/
 typedef struct Game {
     Player player;
+
     Zombie *zombies;
+    usize zombies_per_round;
+
     Bullet *bullets;
 
-    Texture *textures;
+    Texture textures[TextureCount];
+
     u16 round;
+    double round_transition;
+    bool in_round_transition;
 } Game;
 
 Game game_init();
+void draw_hud(Game game);
 void game_draw(State state);
 void game_update(State *state);
 

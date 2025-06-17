@@ -1,23 +1,23 @@
 #include <stdlib.h>
 #include "defs.h"
+#include "include/exrand.h"
 #include "raylib.h"
 
 Zombie zombie_spawn(Game game, Texture tex) {
-    // TODO: change this to the player's view size
+    Player player = game.player;
+
     float x;
     if ((double)rand() / (double)RAND_MAX >= 0.5) {
-        // fmod(rand(), (WIDTH * 1.5f - WIDTH + 1.0f) + WIDTH);
-        x = (float)(rand() % (int)(WIDTH * 1.5f - WIDTH + 1.0f) + WIDTH);
+        x = exrand_range((int)(player.shape.x * 2.0f), (int)(player.shape.x * 2.5f));
     } else {
-        x = (float)(rand() % (int)-WIDTH + 1);
+        x = exrand_range((int)-player.shape.x, (int)(-player.shape.x * 1.5f));
     }
 
-    // TODO: change this to the player's view size
     float y;
     if ((double)rand() / (double)RAND_MAX >= 0.5) {
-        y = (float)(rand() % (int)(HEIGHT * 1.5f - HEIGHT + 1.0f) + HEIGHT);
+        y = exrand_range((int)(player.shape.y * 2.5f), (int)(player.shape.y * 2.0f));
     } else {
-        y = (float)(rand() % (int)-HEIGHT + 1);
+        y = exrand_range((int)-player.shape.y, (int)(-player.shape.y * 1.5f));
     }
 
     Zombie zombie = {
@@ -37,17 +37,23 @@ Zombie zombie_spawn(Game game, Texture tex) {
 }
 
 void zombie_draw(Zombie self) {
-    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 2.0f, WHITE);
+    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 1.0f, WHITE);
 
-    float width = self.health * 8.0f;
-    float height = 7.0f;
+    // health bar
+    {
+        float width = self.health * 8.0f;
+        float height = 7.0f;
 
-    float max_width = self.max_health * 8.0f;
-    float x = self.shape.x + max_width / 4.0f;
-    float y = self.shape.y + self.shape.height + height;
+        float max_width = self.max_health * 8.0f;
+        float x = self.shape.x + self.shape.width / 2.0f - max_width / 2.0f;
+        float y = self.shape.y + self.shape.height + height;
 
-    DrawRectangleRec((Rectangle){x, y, width, height}, RED);
-    // DrawRectangleLinesEx((Rectangle){x, y, max_width, height}, 1.0f, WHITE);
+        DrawRectangleRec((Rectangle){x, y, width, height}, RED);
+    }
+
+    if (debug_mode) {
+        DrawRectangleLinesEx(self.shape, 1.0f, BLUE);
+    }
 }
 
 void zombie_update(Zombie *self, State *state) {

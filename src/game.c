@@ -1,3 +1,4 @@
+#include <string.h>
 #include "include/dyn.h"
 #include "defs.h"
 #include "raylib.h"
@@ -22,10 +23,6 @@ const Gun glock = {
 Game game_init() {
     Texture player_stand_tex = LoadTexture("./src/assets/player_stand.png");
     Texture zombie_stand_tex = LoadTexture("./src/assets/zombie_stand.png");
-
-    Texture *textures = NULL;
-    dynpush(Texture, &textures, player_stand_tex);
-    dynpush(Texture, &textures, zombie_stand_tex);
 
     Player player = {
         .shape = {
@@ -53,18 +50,66 @@ Game game_init() {
 
     Game game = {
         .player = player,
+        .zombies_per_round = 6,
         .bullets = NULL,
-        .textures = textures,
+        .textures = {
+            [TexturePlayer] = player_stand_tex,
+            [TextureZombie] = zombie_stand_tex,
+        },
         .round = 1,
+        .round_transition = 0.0,
+        .in_round_transition = false,
     };
 
     Zombie *zombies = NULL;
-    dynpush(Zombie, &zombies, zombie_spawn(game, zombie_stand_tex));
-    dynpush(Zombie, &zombies, zombie_spawn(game, zombie_stand_tex));
+
+    for (usize i = 0; i < game.zombies_per_round; i++) {
+        dynpush(Zombie, &zombies, zombie_spawn(game, zombie_stand_tex));
+    }
 
     game.zombies = zombies;
 
     return game;
+}
+
+void draw_hud(Game game) {
+    Player player = game.player;
+
+    // round
+    {
+        const char* round = TextFormat("%d", game.round);
+        u32 round_len = strlen(round);
+
+        float font_size = 35.0f;
+        float x = WIDTH - ((float)round_len) * font_size;
+        float y = font_size / 2.0f;
+        DrawTextEx(GetFontDefault(), round, (Vector2){x, y}, font_size, 1.0f, RED);
+    }
+
+    // health
+    {
+        float width = player.health * 20.0f;
+        float height = 15.0f;
+        float x = 20.0f;
+        float y = height;
+
+        DrawRectangleRec((Rectangle){x, y, width, height}, RED);
+        DrawRectangleLinesEx((Rectangle){x, y, player.max_health * 20.0f, height}, 1.0f, WHITE);
+    }
+
+    // gun ammo and stuff
+    {
+        char buffer[11];
+        int buffer_len = 11;
+        sprintf(buffer, "%d / %d", player.gun.mag, player.gun.reserve);
+
+        float font_size = 20.0f;
+        float x = WIDTH - ((float)buffer_len / 2.0f) * font_size;
+        float y = HEIGHT - font_size;
+        DrawTextEx(GetFontDefault(), buffer, (Vector2){x, y}, font_size, 1.0f, WHITE);
+
+        DrawTextEx(GetFontDefault(), player.gun.name, (Vector2){x, y + font_size}, font_size, 1.5f, WHITE);
+    }
 }
 
 void game_draw(State state) {
@@ -89,13 +134,17 @@ void game_draw(State state) {
     player_draw(self.player);
 
     EndMode2D();
-    player_hud(self.player);
+    draw_hud(self);
 
     EndDrawing();
 }
 
 void game_update(State *state) {
     Game *self = &state->play;
+
+    if (IsKeyPressed(KEY_PERIOD)) {
+        debug_mode = !debug_mode;
+    }
 
     player_update(state);
 
@@ -123,8 +172,23 @@ void game_update(State *state) {
         }
     }
 
-    if (self->zombies == NULL) {
-        return;
+    if (dynlen(self->zombies) == 0) {
+        if (!self->in_round_transition) {
+            self->in_round_transition = true;
+            self->round_transition = GetTime();
+        }
+
+        double time_since_round_transition = GetTime() - self->round_transition;
+        if (self->in_round_transition && time_since_round_transition > 5.0) {
+            self->round += 1;
+            self->in_round_transition = false;
+            self->zombies_per_round *= 1.5;
+            printf("zombies per round: %zu\n", self->zombies_per_round);
+
+            for (usize i = 0; i < self->zombies_per_round; i++) {
+                dynpush(Zombie, &self->zombies, zombie_spawn(*self, self->textures[TextureZombie]));
+            }
+        }
     }
 
     // O(n^2) booooo

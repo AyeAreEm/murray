@@ -1,12 +1,13 @@
-#include <stdlib.h>
-#include <time.h>
 #include <raylib.h>
 #include <raymath.h>
 #include "include/dyn.h"
 #include "defs.h"
+#include "include/exrand.h"
+
+bool debug_mode = false;
 
 int main() {
-    srand(time(NULL));
+    exrand_random_seed();
 
     InitWindow(WIDTH, HEIGHT, "Murray");
     SetTargetFPS(60);
