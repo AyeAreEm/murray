@@ -94,7 +94,7 @@ void bullet_draw(Bullet self);
 bool bullet_update(Bullet *self, Player player); 
 
 /********** PLAYER **********/
-#define PLAYER_WIDTH (ENTITY_SCALE / 2.15f)
+#define PLAYER_WIDTH 32.0f
 #define PLAYER_HEIGHT (ENTITY_SCALE)
 #define PLAYER_WALK 3.0f
 #define PLAYER_RUN 6.0f
@@ -122,12 +122,26 @@ void player_get_hit(State *state);
 Bullet player_fire(Player *self);
 
 /********** ZOMBIE **********/
-#define ZOMBIE_WIDTH (ENTITY_SCALE / 2.15f)
+#define ZOMBIE_WIDTH 32.0f
 #define ZOMBIE_HEIGHT (ENTITY_SCALE)
 #define ZOMBIE_START_SPEED 2.0f
 #define ZOMBIE_BASE_HEALTH 5
 
+typedef enum ZombieStateKind {
+    ZombieStateSpawn,
+    ZombieStateChase,
+} ZombieStateKind;
+
+typedef struct ZombieState {
+    ZombieStateKind kind;
+    union {
+        double spawn_time;
+    };
+} ZombieState;
+
 typedef struct Zombie {
+    ZombieState state;
+
     Rectangle shape;
     Texture tex;
     float speed;

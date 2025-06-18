@@ -6,21 +6,27 @@
 Zombie zombie_spawn(Game game, Texture tex) {
     Player player = game.player;
 
+    int safe_box = 80;
+
     float x;
     if ((double)rand() / (double)RAND_MAX >= 0.5) {
-        x = exrand_range((int)(player.shape.x * 2.0f), (int)(player.shape.x * 2.5f));
+        x = exrand_range((int)player.shape.x + safe_box, (int)(player.shape.x + WIDTH / 2.0f));
     } else {
-        x = exrand_range((int)-player.shape.x, (int)(-player.shape.x * 1.5f));
+        x = exrand_range((int)(player.shape.x - WIDTH / 2.0f), (int)player.shape.x - safe_box);
     }
 
     float y;
     if ((double)rand() / (double)RAND_MAX >= 0.5) {
-        y = exrand_range((int)(player.shape.y * 2.5f), (int)(player.shape.y * 2.0f));
+        y = exrand_range((int)player.shape.y + safe_box, (int)(player.shape.y + HEIGHT / 2.0f));
     } else {
-        y = exrand_range((int)-player.shape.y, (int)(-player.shape.y * 1.5f));
+        y = exrand_range((int)(player.shape.y - HEIGHT / 2.0f), (int)player.shape.y - safe_box);
     }
 
     Zombie zombie = {
+        .state = {
+            .kind = ZombieStateSpawn,
+            .spawn_time = GetTime(),
+        },
         .shape = {
             .x = x,
             .y = y,
@@ -37,7 +43,7 @@ Zombie zombie_spawn(Game game, Texture tex) {
 }
 
 void zombie_draw(Zombie self) {
-    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 1.0f, WHITE);
+    DrawTextureEx(self.tex, (Vector2){self.shape.x - self.shape.width / 2.0f, self.shape.y}, 0.0f, 1.0f, WHITE);
 
     // health bar
     {
@@ -59,14 +65,26 @@ void zombie_draw(Zombie self) {
 void zombie_update(Zombie *self, State *state) {
     Player *player = &state->play.player;
 
-    Vector2 direction = {
-        .x = player->shape.x - self->shape.x,
-        .y = player->shape.y - self->shape.y,
-    };
-    direction = Vector2Normalize(direction);
+    switch (self->state.kind) {
+        case ZombieStateSpawn: {
+            if (GetTime() - self->state.spawn_time > 3.0) {
+                self->state.kind = ZombieStateChase;
+            }
+            break;
+        }
+        case ZombieStateChase: {
+            Vector2 direction = {
+                .x = player->shape.x - self->shape.x,
+                .y = player->shape.y - self->shape.y,
+            };
+            direction = Vector2Normalize(direction);
 
-    self->shape.x += direction.x * self->speed;
-    self->shape.y += direction.y * self->speed;
+            self->shape.x += direction.x * self->speed;
+            self->shape.y += direction.y * self->speed;
+            break;
+        }
+    }
+
 
     if (CheckCollisionRecs(self->shape, player->shape)) {
         player_get_hit(state);

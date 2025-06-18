@@ -4,7 +4,7 @@
 #include "defs.h"
 
 void player_draw(Player self) {
-    DrawTextureEx(self.tex, (Vector2){self.shape.x, self.shape.y}, 0.0f, 1.0f, WHITE);
+    DrawTextureEx(self.tex, (Vector2){self.shape.x - self.shape.width / 2.0f, self.shape.y}, 0.0f, 1.0f, WHITE);
 
     // line between player and mouse position
     if (debug_mode) {
@@ -42,6 +42,10 @@ Bullet player_spawn_bullet(Player *self) {
 }
 
 Bullet player_fire_pistol(Player *self) {
+    if (debug_mode) {
+        return player_spawn_bullet(self);
+    }
+
     self->gun.mag -= 1;
     return player_spawn_bullet(self);
 }

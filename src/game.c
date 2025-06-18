@@ -21,8 +21,8 @@ const Gun glock = {
 };
 
 Game game_init() {
-    Texture player_stand_tex = LoadTexture("./src/assets/player_stand.png");
-    Texture zombie_stand_tex = LoadTexture("./src/assets/zombie_stand.png");
+    Texture player_stand_tex = LoadTexture("./src/assets/murray_player_stand.png");
+    Texture zombie_stand_tex = LoadTexture("./src/assets/murray_zombie_stand.png");
 
     Player player = {
         .shape = {
@@ -74,6 +74,13 @@ Game game_init() {
 
 void draw_hud(Game game) {
     Player player = game.player;
+
+    // zombies left
+    {
+        const char* zombies_left = TextFormat("Zombies: %zu", dynlen(game.zombies));
+        int font_size = 15;
+        DrawText(zombies_left, WIDTH / 2.0f - (float)font_size * strlen(zombies_left) / 4, font_size, font_size, WHITE);
+    }
 
     // round
     {
@@ -183,7 +190,6 @@ void game_update(State *state) {
             self->round += 1;
             self->in_round_transition = false;
             self->zombies_per_round *= 1.5;
-            printf("zombies per round: %zu\n", self->zombies_per_round);
 
             for (usize i = 0; i < self->zombies_per_round; i++) {
                 dynpush(Zombie, &self->zombies, zombie_spawn(*self, self->textures[TextureZombie]));
