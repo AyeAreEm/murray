@@ -1,7 +1,8 @@
 #include "defs.h"
+#include "raylib.h"
 
 void bullet_draw(Bullet self) {
-    DrawRectangleRec(self.shape, GOLD);
+    DrawRectangleRec(self.shape, GRAY);
 }
 
 bool bullet_update(Bullet *self, Player player) {

@@ -8,6 +8,7 @@ void player_draw(Player self) {
 
     // line between player and mouse position
     if (debug_mode) {
+        DrawRectangleLinesEx(self.melee_area, 1.0f, SKYBLUE);
         DrawRectangleLinesEx(self.shape, 1.0f, BLUE);
         DrawLineEx(
             (Vector2){
@@ -41,7 +42,7 @@ Bullet player_spawn_bullet(Player *self) {
     return bullet;
 }
 
-Bullet player_fire_pistol(Player *self) {
+Bullet player_fire_gun(Player *self) {
     if (debug_mode) {
         return player_spawn_bullet(self);
     }
@@ -51,18 +52,21 @@ Bullet player_fire_pistol(Player *self) {
 }
 
 Bullet player_fire(Player *self) {
-    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        return (Bullet){0};
-    }
-
     if (self->gun.mag == 0) {
         return (Bullet){0};
     }
 
     switch (self->gun.kind) {
-    case GunPistol:
-        return player_fire_pistol(self);
-        break;
+    case GunSemi:
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            return player_fire_gun(self);
+        }
+        return (Bullet){0};
+    case GunFull:
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            return player_fire_gun(self);
+        }
+        return (Bullet){0};
     }
 }
 
@@ -94,6 +98,8 @@ void player_movement(Player *self) {
 
     self->shape.x += pos.x * self->speed;
     self->shape.y += pos.y * self->speed;
+    self->melee_area.x = self->shape.x - PLAYER_MELEE_WIDTH / 2.0f;
+    self->melee_area.y = self->shape.y - PLAYER_MELEE_HEIGHT / 2.0f;
 
     self->camera.target = (Vector2){self->shape.x, self->shape.y};
 }
@@ -125,6 +131,15 @@ void player_get_hit(State *state) {
     }
 }
 
+void player_melee(Player *self) {
+    if (!IsKeyPressed(KEY_V)) {
+        self->melee_area_active = false;
+        return;
+    }
+
+    self->melee_area_active = true;
+}
+
 void player_update(State *state) {
     Player *player = &state->play.player;
 
@@ -141,6 +156,8 @@ void player_update(State *state) {
         player->regen_time = GetTime();
         player->health += 1;
     }
+
+    player_melee(player);
 
     Bullet bullet = player_fire(player);
     if (bullet.shape.width == 0 && bullet.shape.height == 0) {

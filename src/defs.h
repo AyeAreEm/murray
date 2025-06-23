@@ -60,7 +60,8 @@ typedef enum TextureKind {
 
 /********** GUN **********/
 typedef enum GunKind {
-    GunPistol,
+    GunSemi,
+    GunFull,
 } GunKind;
 
 typedef struct Gun {
@@ -96,6 +97,10 @@ bool bullet_update(Bullet *self, Player player);
 /********** PLAYER **********/
 #define PLAYER_WIDTH 32.0f
 #define PLAYER_HEIGHT (ENTITY_SCALE)
+
+#define PLAYER_MELEE_WIDTH 40.0f
+#define PLAYER_MELEE_HEIGHT 40.0f
+
 #define PLAYER_WALK 3.0f
 #define PLAYER_RUN 6.0f
 
@@ -104,6 +109,9 @@ typedef struct Player {
 
     Rectangle shape;
     Texture tex;
+
+    Rectangle melee_area;
+    bool melee_area_active;
 
     float speed;
     Gun gun;
@@ -125,6 +133,7 @@ Bullet player_fire(Player *self);
 #define ZOMBIE_WIDTH 32.0f
 #define ZOMBIE_HEIGHT (ENTITY_SCALE)
 #define ZOMBIE_START_SPEED 2.0f
+#define ZOMBIE_MAX_SPEED 6.0f
 #define ZOMBIE_BASE_HEALTH 5
 
 typedef enum ZombieStateKind {
@@ -146,8 +155,8 @@ typedef struct Zombie {
     Texture tex;
     float speed;
 
-    u8 max_health;
-    u8 health;
+    u32 max_health;
+    u32 health;
 } Zombie;
 
 Zombie zombie_spawn(Game game, Texture tex);
@@ -159,7 +168,9 @@ typedef struct Game {
     Player player;
 
     Zombie *zombies;
+    float zombie_speed;
     usize zombies_per_round;
+    u32 zombie_health;
 
     Bullet *bullets;
 
@@ -190,6 +201,8 @@ typedef struct Button {
 typedef struct Menu {
     Button play;
     Button quit;
+    Texture title;
+    Vector2 title_dimensions;
 } Menu;
 
 typedef struct GameOver {

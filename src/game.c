@@ -1,14 +1,17 @@
+#include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include "include/dyn.h"
 #include "defs.h"
 #include "raylib.h"
+#include "raymath.h"
 
 dynimpl(Zombie, Zombie);
 dynimpl(Bullet, Bullet);
 dynimpl(Texture, Texture);
 
 const Gun glock = {
-    .kind = GunPistol,
+    .kind = GunSemi,
     .name = "Glock",
 
     .fire_rate = 5,
@@ -20,18 +23,39 @@ const Gun glock = {
     .reserve = 240,
 };
 
+// gun for testing. TODO: remove this gun at some point
+const Gun rari = {
+    .kind = GunFull,
+    .name = "Rari",
+
+    .fire_rate = 5,
+    .max_mag = 1000,
+    .max_reserve = 10000,
+    .bullet_health = 10,
+
+    .mag = 1000,
+    .reserve = 10000,
+};
+
 Game game_init() {
     Texture player_stand_tex = LoadTexture("./src/assets/murray_player_stand.png");
     Texture zombie_stand_tex = LoadTexture("./src/assets/murray_zombie_stand.png");
 
     Player player = {
         .shape = {
-            .x = WIDTH/2,
-            .y = HEIGHT/2,
+            .x = WIDTH/2.0f,
+            .y = HEIGHT/2.0f,
             .width = PLAYER_WIDTH,
             .height = PLAYER_HEIGHT,
         },
         .tex = player_stand_tex,
+        .melee_area = {
+            .x = WIDTH/2.0f - PLAYER_MELEE_WIDTH/2.0f,
+            .y = HEIGHT/2.0f - PLAYER_MELEE_HEIGHT/2.0f,
+            .width = PLAYER_WIDTH + PLAYER_MELEE_WIDTH,
+            .height = PLAYER_HEIGHT + PLAYER_MELEE_HEIGHT,
+        },
+        .melee_area_active = false,
         .speed = PLAYER_WALK,
         .gun = glock,
         .max_health = 3,
@@ -50,7 +74,9 @@ Game game_init() {
 
     Game game = {
         .player = player,
+        .zombie_speed = ZOMBIE_START_SPEED,
         .zombies_per_round = 6,
+        .zombie_health = ZOMBIE_BASE_HEALTH,
         .bullets = NULL,
         .textures = {
             [TexturePlayer] = player_stand_tex,
@@ -106,12 +132,11 @@ void draw_hud(Game game) {
 
     // gun ammo and stuff
     {
-        char buffer[11];
-        int buffer_len = 11;
-        sprintf(buffer, "%d / %d", player.gun.mag, player.gun.reserve);
+        // 1000 / 10000
+        const char* buffer = TextFormat("%d / %d", player.gun.mag, player.gun.reserve);
 
         float font_size = 20.0f;
-        float x = WIDTH - ((float)buffer_len / 2.0f) * font_size;
+        float x = WIDTH - ((float)strlen(buffer) + 1.0f) / 2.0f * font_size;
         float y = HEIGHT - font_size;
         DrawTextEx(GetFontDefault(), buffer, (Vector2){x, y}, font_size, 1.0f, WHITE);
 
@@ -141,6 +166,7 @@ void game_draw(State state) {
     player_draw(self.player);
 
     EndMode2D();
+
     draw_hud(self);
 
     EndDrawing();
@@ -179,20 +205,27 @@ void game_update(State *state) {
         }
     }
 
-    if (dynlen(self->zombies) == 0) {
-        if (!self->in_round_transition) {
-            self->in_round_transition = true;
-            self->round_transition = GetTime();
-        }
+    // round transition
+    {
+        if (dynlen(self->zombies) == 0) {
+            if (!self->in_round_transition) {
+                self->in_round_transition = true;
+                self->round_transition = GetTime();
+            }
 
-        double time_since_round_transition = GetTime() - self->round_transition;
-        if (self->in_round_transition && time_since_round_transition > 5.0) {
-            self->round += 1;
-            self->in_round_transition = false;
-            self->zombies_per_round *= 1.5;
+            double time_since_round_transition = GetTime() - self->round_transition;
+            if (self->in_round_transition && time_since_round_transition > 5.0) {
+                self->round += 1;
+                self->in_round_transition = false;
 
-            for (usize i = 0; i < self->zombies_per_round; i++) {
-                dynpush(Zombie, &self->zombies, zombie_spawn(*self, self->textures[TextureZombie]));
+                self->zombie_speed = Clamp(self->zombie_speed + 0.2f, 0.0f, ZOMBIE_MAX_SPEED);
+
+                self->zombies_per_round = (usize)roundf(self->zombies_per_round * 1.2f);
+                self->zombie_health *= 1.5;
+
+                for (usize i = 0; i < self->zombies_per_round; i++) {
+                    dynpush(Zombie, &self->zombies, zombie_spawn(*self, self->textures[TextureZombie]));
+                }
             }
         }
     }
@@ -200,6 +233,14 @@ void game_update(State *state) {
     // O(n^2) booooo
     for (size_t i = 0; i < dynlen(self->zombies); i++) {
         zombie_update(&self->zombies[i], state);
+
+        // check if zombie has been meleed
+        if (self->player.melee_area_active && CheckCollisionRecs(self->zombies[i].shape, self->player.melee_area)) {
+            self->zombies[i].health -= 5;
+            if ((i32)self->zombies[i].health <= 0) {
+                dynremove(Zombie, self->zombies, i);
+            }
+        }
 
         for (size_t j = 0; j < dynlen(self->zombies); j++) {
             if (j == i) {

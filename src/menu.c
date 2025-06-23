@@ -26,9 +26,13 @@ Menu menu_init() {
         .text = "Quit",
     };
 
+    Texture title = LoadTexture("./src/assets/murray_menu_title.png");
+
     Menu menu = (Menu){
         .play = play,
         .quit = quit,
+        .title = title,
+        .title_dimensions = (Vector2){452.0f, 238.0f},
     };
 
     return menu;
@@ -41,7 +45,7 @@ void menu_draw(State state) {
     ClearBackground(BLACK);
 
     float title_font_size = 50.0f;
-    DrawText("Murray", WIDTH / 2 - title_font_size * strlen("Murray") / 4, HEIGHT / 2 - title_font_size * 4, title_font_size, WHITE);
+    DrawTexture(menu.title, WIDTH / 2.0f - menu.title_dimensions.x / 2.0f, menu.title_dimensions.y / 4.0f, WHITE);
 
     float button_font_size = 20.0f;
     DrawRectangleRec(menu.play.shape, WHITE);
@@ -57,6 +61,10 @@ void menu_draw(State state) {
     EndDrawing();
 }
 
+void menu_cleanup(Menu *menu) {
+    UnloadTexture(menu->title);
+}
+
 void menu_update(State *state) {
     Menu *menu = &state->menu;
 
@@ -66,6 +74,7 @@ void menu_update(State *state) {
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             SetMouseCursor(MOUSE_CURSOR_DEFAULT);
             state->kind = StatePlay;
+            menu_cleanup(menu);
             state->play = game_init();
         }
     } else if (CheckCollisionPointRec(GetMousePosition(), menu->quit.shape)) {

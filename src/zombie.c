@@ -33,9 +33,9 @@ Zombie zombie_spawn(Game game, Texture tex) {
             .width = ZOMBIE_WIDTH,
             .height = ZOMBIE_HEIGHT,
         },
-        .speed = ZOMBIE_START_SPEED,
-        .max_health = ZOMBIE_BASE_HEALTH,
-        .health = ZOMBIE_BASE_HEALTH,
+        .speed = game.zombie_speed,
+        .max_health = game.zombie_health,
+        .health = game.zombie_health,
         .tex = tex,
     };
 
@@ -47,10 +47,12 @@ void zombie_draw(Zombie self) {
 
     // health bar
     {
-        float width = self.health * 8.0f;
+
+        float max_width = 40.0f;
+
+        float width = ((float)self.health / (float)self.max_health) * max_width;
         float height = 7.0f;
 
-        float max_width = self.max_health * 8.0f;
         float x = self.shape.x + self.shape.width / 2.0f - max_width / 2.0f;
         float y = self.shape.y + self.shape.height + height;
 
@@ -84,7 +86,6 @@ void zombie_update(Zombie *self, State *state) {
             break;
         }
     }
-
 
     if (CheckCollisionRecs(self->shape, player->shape)) {
         player_get_hit(state);
