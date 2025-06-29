@@ -3,6 +3,32 @@
 #include "include/dyn.h"
 #include "defs.h"
 
+Player player_init(Texture tex) {
+    return (Player){
+        .shape = {
+            .x = WIDTH/2.0f,
+            .y = HEIGHT/2.0f,
+            .width = PLAYER_WIDTH,
+            .height = PLAYER_HEIGHT,
+        },
+        .tex = tex,
+        .melee_area = {
+            .x = WIDTH/2.0f - PLAYER_MELEE_WIDTH/2.0f,
+            .y = HEIGHT/2.0f - PLAYER_MELEE_HEIGHT/2.0f,
+            .width = PLAYER_WIDTH + PLAYER_MELEE_WIDTH,
+            .height = PLAYER_HEIGHT + PLAYER_MELEE_HEIGHT,
+        },
+        .melee_area_active = false,
+        .speed = PLAYER_WALK,
+        .gun = barrett,
+        .max_health = 3,
+        .health = 3,
+        .in_iframe = false,
+        .iframe_time = 0.0,
+        .points = 0,
+    };
+}
+
 void player_draw(Player self) {
     DrawTextureEx(self.tex, (Vector2){self.shape.x - self.shape.width / 2.0f, self.shape.y}, 0.0f, 1.0f, WHITE);
 
@@ -30,7 +56,7 @@ Bullet player_spawn_bullet(Player *self) {
             .width = BULLET_WIDTH,
             .height = BULLET_HEIGHT,
         },
-        .health = self->gun.bullet_health,
+        .damage = self->gun.damage,
     };
 
     Vector2 direction = (Vector2){
@@ -60,14 +86,18 @@ Bullet player_fire(Player *self) {
     case GunSemi:
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             return player_fire_gun(self);
-        }
-        return (Bullet){0};
+        } break;
     case GunFull:
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             return player_fire_gun(self);
-        }
-        return (Bullet){0};
+        } break;
+    case GunBoltAction:
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            return player_fire_gun(self);
+        } break;
     }
+
+    return (Bullet){0};
 }
 
 void player_movement(Player *self) {

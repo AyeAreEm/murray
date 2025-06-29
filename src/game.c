@@ -10,59 +10,11 @@ dynimpl(Zombie, Zombie);
 dynimpl(Bullet, Bullet);
 dynimpl(Texture, Texture);
 
-const Gun glock = {
-    .kind = GunSemi,
-    .name = "Glock",
-
-    .fire_rate = 5,
-    .max_mag = 24,
-    .max_reserve = 240,
-    .bullet_health = 1,
-
-    .mag = 24,
-    .reserve = 240,
-};
-
-// gun for testing. TODO: remove this gun at some point
-const Gun rari = {
-    .kind = GunFull,
-    .name = "Rari",
-
-    .fire_rate = 5,
-    .max_mag = 1000,
-    .max_reserve = 10000,
-    .bullet_health = 10,
-
-    .mag = 1000,
-    .reserve = 10000,
-};
-
 Game game_init() {
     Texture player_stand_tex = LoadTexture("./src/assets/murray_player_stand.png");
     Texture zombie_stand_tex = LoadTexture("./src/assets/murray_zombie_stand.png");
 
-    Player player = {
-        .shape = {
-            .x = WIDTH/2.0f,
-            .y = HEIGHT/2.0f,
-            .width = PLAYER_WIDTH,
-            .height = PLAYER_HEIGHT,
-        },
-        .tex = player_stand_tex,
-        .melee_area = {
-            .x = WIDTH/2.0f - PLAYER_MELEE_WIDTH/2.0f,
-            .y = HEIGHT/2.0f - PLAYER_MELEE_HEIGHT/2.0f,
-            .width = PLAYER_WIDTH + PLAYER_MELEE_WIDTH,
-            .height = PLAYER_HEIGHT + PLAYER_MELEE_HEIGHT,
-        },
-        .melee_area_active = false,
-        .speed = PLAYER_WALK,
-        .gun = glock,
-        .max_health = 3,
-        .health = 3,
-        .in_iframe = false,
-        .iframe_time = 0.0,
-    };
+    Player player = player_init(player_stand_tex);
 
     Camera2D camera = {
         .target = {player.shape.x, player.shape.y},
@@ -132,15 +84,23 @@ void draw_hud(Game game) {
 
     // gun ammo and stuff
     {
-        // 1000 / 10000
         const char* buffer = TextFormat("%d / %d", player.gun.mag, player.gun.reserve);
 
         float font_size = 20.0f;
         float x = WIDTH - ((float)strlen(buffer) + 1.0f) / 2.0f * font_size;
         float y = HEIGHT - font_size;
-        DrawTextEx(GetFontDefault(), buffer, (Vector2){x, y}, font_size, 1.0f, WHITE);
 
+        DrawTextEx(GetFontDefault(), buffer, (Vector2){x, y}, font_size, 1.0f, WHITE);
         DrawTextEx(GetFontDefault(), player.gun.name, (Vector2){x, y + font_size}, font_size, 1.5f, WHITE);
+    }
+
+    // points
+    {
+        const char *points = TextFormat("%lu", player.points);
+        float font_size = 20.0f;
+        float x = font_size / 2.0f;
+        float y = HEIGHT;
+        DrawTextEx(GetFontDefault(), points, (Vector2){x, y}, font_size, 1.0f, WHITE);
     }
 }
 
@@ -182,26 +142,43 @@ void game_update(State *state) {
     player_update(state);
 
     if (self->bullets != NULL) {
-        for (size_t i = 0; i < dynlen(self->bullets); i++) {
+        for (size_t i = 0; i < dynlen(self->bullets);) {
             bool remove = bullet_update(&self->bullets[i], self->player);
             if (remove) {
                 dynremove(Bullet, self->bullets, i);
+                continue;
             }
 
-            // kill zombie lol
-            for (size_t j = 0; j < dynlen(self->zombies); j++) {
+            // hurt and kill zombies.
+            // handle points
+            bool removed_bullet = false;
+            for (size_t j = 0; j < dynlen(self->zombies);) {
                 if (CheckCollisionRecs(self->bullets[i].shape, self->zombies[j].shape)) {
-                    self->zombies[j].health -= 1;
+                    self->zombies[j].health = (u32)Clamp((i32)(self->zombies[j].health - self->bullets[i].damage), 0.0f, self->zombies[j].health);
+
                     if (self->zombies[j].health == 0) {
+                        // zombie dead, remove zombie, add 100 points
+                        self->player.points += 100;
                         dynremove(Zombie, self->zombies, j);
+                        continue;
                     }
 
-                    self->bullets[i].health -= 1;
-                    if (self->bullets[i].health == 0) {
-                        dynremove(Bullet, self->bullets, i);
-                    }
+                    // zombie lives, add 10 points, remove bullet
+                    self->player.points += 10;
+                    dynremove(Bullet, self->bullets, i);
+                    removed_bullet = true;
+                    j += 1;
+                    continue;
                 }
+
+                j += 1;
             }
+
+            if (removed_bullet) {
+                continue;
+            }
+
+            i += 1;
         }
     }
 
@@ -231,14 +208,15 @@ void game_update(State *state) {
     }
 
     // O(n^2) booooo
-    for (size_t i = 0; i < dynlen(self->zombies); i++) {
+    for (size_t i = 0; i < dynlen(self->zombies);) {
         zombie_update(&self->zombies[i], state);
 
         // check if zombie has been meleed
         if (self->player.melee_area_active && CheckCollisionRecs(self->zombies[i].shape, self->player.melee_area)) {
-            self->zombies[i].health -= 5;
-            if ((i32)self->zombies[i].health <= 0) {
+            self->zombies[i].health = (u32)Clamp((i32)(self->zombies[i].health - MELEE_DMG), 0.0f, self->zombies[i].health);
+            if (self->zombies[i].health == 0) {
                 dynremove(Zombie, self->zombies, i);
+                continue;
             }
         }
 
@@ -277,5 +255,7 @@ void game_update(State *state) {
                 }
             }
         }
+
+        i += 1;
     }
 }

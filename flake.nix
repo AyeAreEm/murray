@@ -15,6 +15,7 @@
         raylib
         clang-tools
         clang
+        gdb
       ];
     };
   };

@@ -1,6 +1,5 @@
 #include <raylib.h>
 #include <raymath.h>
-#include <stdio.h>
 #include "include/dyn.h"
 #include "defs.h"
 #include "include/exrand.h"

@@ -26,26 +26,33 @@ typedef SSIZE_T ssize_t;
 #endif
 typedef ssize_t isize;
 
-extern bool debug_mode;
-
-#define WIDTH 1280.0f
-#define HEIGHT 720.0f
-
-#define ENTITY_SCALE 64.0f
-
-#define MOUSE_X(player) ((player).shape.x + (GetMousePosition().x - (WIDTH / 2.0f)))
-#define MOUSE_Y(player) ((player).shape.y + (GetMousePosition().y - (HEIGHT / 2.0f)))
-#define MOUSE_XY(player) ((Vector2){MOUSE_X((player)), MOUSE_Y((player))})
-
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-
 /********** FORWARD DECLS **********/
 typedef struct State State;
 typedef struct Menu Menu;
 typedef struct Game Game;
 typedef struct Player Player;
 typedef struct Zombie Zombie;
+typedef struct Gun Gun;
 typedef struct Bullet Bullet;
+
+/********** GLOBALS **********/
+extern bool debug_mode;
+extern const Gun glock;
+extern const Gun barrett;
+extern const Gun rari;
+
+#define WIDTH 1280.0f
+#define HEIGHT 720.0f
+
+#define ENTITY_SCALE 64.0f
+
+#define MELEE_DMG 5
+
+#define MOUSE_X(player) ((player).shape.x + (GetMousePosition().x - (WIDTH / 2.0f)))
+#define MOUSE_Y(player) ((player).shape.y + (GetMousePosition().y - (HEIGHT / 2.0f)))
+#define MOUSE_XY(player) ((Vector2){MOUSE_X((player)), MOUSE_Y((player))})
+
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 dyndefs(Zombie, Zombie);
 dyndefs(Bullet, Bullet);
@@ -62,6 +69,7 @@ typedef enum TextureKind {
 typedef enum GunKind {
     GunSemi,
     GunFull,
+    GunBoltAction,
 } GunKind;
 
 typedef struct Gun {
@@ -72,7 +80,8 @@ typedef struct Gun {
     u8 fire_rate;
     u32 max_mag;
     u32 max_reserve;
-    u8 bullet_health;
+
+    u16 damage;
 
     u32 mag;
     u32 reserve;
@@ -87,7 +96,7 @@ typedef struct Gun {
 typedef struct Bullet {
     Rectangle shape;
     Vector2 direction;
-    u8 health;
+    u16 damage;
 } Bullet;
 
 void bullet_draw(Bullet self);
@@ -122,8 +131,11 @@ typedef struct Player {
 
     bool in_iframe;
     double iframe_time;
+
+    u32 points;
 } Player;
 
+Player player_init(Texture tex);
 void player_draw(Player self);
 void player_update(State *state);
 void player_get_hit(State *state);
