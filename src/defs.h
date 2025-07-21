@@ -49,11 +49,19 @@ extern const Gun rari;
 #define REMOVE(xs, len, idx)\
     do {\
         assert((idx) < (len));\
-        for (size_t i = (idx); i + 1 < (len); i++) {\
-            xs[i] = xs[i + 1];\
+        for (size_t remove_macro_index = (idx); remove_macro_index + 1 < (len); remove_macro_index++) {\
+            xs[remove_macro_index] = xs[remove_macro_index + 1];\
         }\
         (len)--;\
     } while (0)
+#define FILL(dest, dest_count, src, src_count, len)\
+    do {\
+        (dest_count) = 0;\
+        for (size_t fill_macro_index = 0; fill_macro_index < (src_count); fill_macro_index++) {\
+            PUSH((dest), (len), (dest_count), (src)[fill_macro_index]);\
+        }\
+    } while (0)\
+
 
 /********** TEXTURES **********/
 typedef enum TextureKind {
@@ -87,7 +95,7 @@ typedef struct Gun {
 /********** BULLET **********/
 #define BULLET_WIDTH (ENTITY_SCALE / 6.4f)
 #define BULLET_HEIGHT (ENTITY_SCALE / 6.4f)
-#define BULLET_DESPAWN_DIST (WIDTH * 2.0f)
+#define BULLET_DESPAWN_DIST (WIDTH * 1.5f)
 #define BULLET_SPEED 8.0f
 
 typedef struct Bullet {

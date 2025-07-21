@@ -1,5 +1,4 @@
 # TODOS
-- FIX SEGFAULT WITH BULLET ARRAY 
 - Make art
 - Level editor
 - Buyable doors, etc
@@ -25,3 +24,4 @@
 - Zombie speed
 - Point system
 - Fix Bullet System (bullets go through zombies if they have died)
+- FIX SEGFAULT WITH BULLET ARRAY 

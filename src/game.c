@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include "defs.h"
@@ -121,6 +122,54 @@ void game_draw(State state) {
     EndDrawing();
 }
 
+void game_update_bullets_and_zombies(Game *self) {
+    Bullet temp_bullets[BULLETS_LEN] = {0};
+    size_t temp_bullets_count = 0;
+
+    Zombie temp_zombies[ZOMBIES_LEN] = {0};
+    size_t temp_zombies_count = 0;
+
+    for (size_t i = 0; i < self->bullets_count; i++) {
+        bool remove = bullet_update(&self->bullets[i], self->player);
+        if (remove) {
+            continue;
+        }
+
+        // hurt and kill zombies
+        // handle points
+        bool removed_bullet = false;
+        for (size_t j = 0; j < self->zombies_count; j++) {
+            if (CheckCollisionRecs(self->bullets[i].shape, self->zombies[j].shape)) {
+                self->zombies[j].health = (uint32_t)Clamp((int32_t)(self->zombies[j].health - self->bullets[i].damage), 0.0f, self->zombies[j].health);
+
+                if (self->zombies[j].health == 0) {
+                    // zombie dead, remove zombie, add 100 points
+                    self->player.points += 100;
+                    continue;
+                }
+
+                // zombie lives, add 10 points, remove bullet
+                self->player.points += 10;
+                PUSH(temp_zombies, ZOMBIES_LEN, temp_zombies_count, self->zombies[j]);
+                removed_bullet = true;
+                break;
+            } else {
+                PUSH(temp_zombies, ZOMBIES_LEN, temp_zombies_count, self->zombies[j]);
+            }
+        }
+
+        FILL(self->zombies, self->zombies_count, temp_zombies, temp_zombies_count, ZOMBIES_LEN);
+        temp_zombies_count = 0;
+
+        if (removed_bullet) {
+            continue;
+        }
+
+        PUSH(temp_bullets, BULLETS_LEN, temp_bullets_count, self->bullets[i]);
+    }
+    FILL(self->bullets, self->bullets_count, temp_bullets, temp_bullets_count, BULLETS_LEN);
+}
+
 void game_update(State *state) {
     Game *self = &state->play;
 
@@ -129,46 +178,7 @@ void game_update(State *state) {
     }
 
     player_update(state);
-
-    for (size_t i = 0; i < self->bullets_count;) {
-        printf("i: %zu, bullet count: %zu\n", i, self->bullets_count);
-
-        bool remove = bullet_update(&self->bullets[i], self->player);
-        if (remove) {
-            REMOVE(self->bullets, self->bullets_count, i);
-            continue;
-        }
-
-        // hurt and kill zombies.
-        // handle points
-        bool removed_bullet = false;
-        for (size_t j = 0; j < self->zombies_count;) {
-            if (CheckCollisionRecs(self->bullets[i].shape, self->zombies[j].shape)) {
-                self->zombies[j].health = (uint32_t)Clamp((int32_t)(self->zombies[j].health - self->bullets[i].damage), 0.0f, self->zombies[j].health);
-
-                if (self->zombies[j].health == 0) {
-                    // zombie dead, remove zombie, add 100 points
-                    self->player.points += 100;
-                    REMOVE(self->zombies, self->zombies_count, j);
-                    continue;
-                }
-
-                // zombie lives, add 10 points, remove bullet
-                self->player.points += 10;
-                REMOVE(self->bullets, self->bullets_count, i);
-                removed_bullet = true;
-                break;
-            }
-
-            j += 1;
-        }
-
-        if (removed_bullet) {
-            continue;
-        }
-
-        i += 1;
-    }
+    game_update_bullets_and_zombies(self);
 
     // round transition
     {
@@ -196,6 +206,7 @@ void game_update(State *state) {
     }
 
     // O(n^2) booooo
+    // prevent zombies overlapping
     for (size_t i = 0; i < self->zombies_count;) {
         zombie_update(&self->zombies[i], state);
 
