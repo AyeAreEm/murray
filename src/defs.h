@@ -4,19 +4,8 @@
 #include <stdint.h>
 #include <raylib.h>
 #include <raymath.h>
-#include "include/dyn.h"
+#include <assert.h>
 #include "include/exrand.h"
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef size_t usize;
-
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
 
 #if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__sun) || defined(__CYGWIN__)
 #include <sys/types.h>
@@ -44,6 +33,9 @@ extern const Gun rari;
 #define WIDTH 1280.0f
 #define HEIGHT 720.0f
 
+#define BULLETS_LEN 255
+#define ZOMBIES_LEN 1024
+
 #define ENTITY_SCALE 64.0f
 
 #define MELEE_DMG 5
@@ -53,10 +45,15 @@ extern const Gun rari;
 #define MOUSE_XY(player) ((Vector2){MOUSE_X((player)), MOUSE_Y((player))})
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
-
-dyndefs(Zombie, Zombie);
-dyndefs(Bullet, Bullet);
-dyndefs(Texture, Texture);
+#define PUSH(xs, len, tail_idx, item) (assert((tail_idx) < (len)), (xs)[(tail_idx)++] = (item))
+#define REMOVE(xs, len, idx)\
+    do {\
+        assert((idx) < (len));\
+        for (size_t i = (idx); i + 1 < (len); i++) {\
+            xs[i] = xs[i + 1];\
+        }\
+        (len)--;\
+    } while (0)
 
 /********** TEXTURES **********/
 typedef enum TextureKind {
@@ -77,14 +74,14 @@ typedef struct Gun {
     const char* name;
 
     // stats
-    u8 fire_rate;
-    u32 max_mag;
-    u32 max_reserve;
+    uint8_t fire_rate;
+    uint32_t max_mag;
+    uint32_t max_reserve;
 
-    u16 damage;
+    uint16_t damage;
 
-    u32 mag;
-    u32 reserve;
+    uint32_t mag;
+    uint32_t reserve;
 } Gun;
 
 /********** BULLET **********/
@@ -96,8 +93,9 @@ typedef struct Gun {
 typedef struct Bullet {
     Rectangle shape;
     Vector2 direction;
-    u16 damage;
+    uint16_t damage;
 } Bullet;
+extern Bullet bullets[BULLETS_LEN];
 
 void bullet_draw(Bullet self);
 // returns true if needs to be removed from bullets array
@@ -125,14 +123,14 @@ typedef struct Player {
     float speed;
     Gun gun;
 
-    u8 max_health;
-    u8 health;
+    uint8_t max_health;
+    uint8_t health;
     double regen_time;
 
     bool in_iframe;
     double iframe_time;
 
-    u32 points;
+    uint32_t points;
 } Player;
 
 Player player_init(Texture tex);
@@ -167,9 +165,10 @@ typedef struct Zombie {
     Texture tex;
     float speed;
 
-    u32 max_health;
-    u32 health;
+    uint32_t max_health;
+    uint32_t health;
 } Zombie;
+extern Zombie zombies[ZOMBIES_LEN];
 
 Zombie zombie_spawn(Game game, Texture tex);
 void zombie_draw(Zombie self);
@@ -180,15 +179,18 @@ typedef struct Game {
     Player player;
 
     Zombie *zombies;
+    size_t zombies_count;
+
     float zombie_speed;
-    usize zombies_per_round;
-    u32 zombie_health;
+    size_t zombies_per_round;
+    uint32_t zombie_health;
 
     Bullet *bullets;
+    size_t bullets_count;
 
     Texture textures[TextureCount];
 
-    u16 round;
+    uint16_t round;
     double round_transition;
     bool in_round_transition;
 } Game;

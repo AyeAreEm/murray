@@ -1,6 +1,6 @@
 #include <raylib.h>
 #include <raymath.h>
-#include "include/dyn.h"
+#include <stdint.h>
 #include "defs.h"
 
 Player player_init(Texture tex) {
@@ -136,8 +136,8 @@ void player_movement(Player *self) {
 
 void player_reload(Player *self) {
     if (IsKeyPressed(KEY_R)) {
-        u32 mag_needs = self->gun.max_mag - self->gun.mag;
-        u32 moved = MIN(mag_needs, self->gun.reserve);
+        uint32_t mag_needs = self->gun.max_mag - self->gun.mag;
+        uint32_t moved = MIN(mag_needs, self->gun.reserve);
         self->gun.reserve -= moved;
         self->gun.mag += moved;
     }
@@ -193,5 +193,5 @@ void player_update(State *state) {
     if (bullet.shape.width == 0 && bullet.shape.height == 0) {
         return;
     }
-    dynpush(Bullet, &state->play.bullets, bullet);
+    PUSH(state->play.bullets, BULLETS_LEN, state->play.bullets_count, bullet);
 }

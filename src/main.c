@@ -1,10 +1,12 @@
 #include <raylib.h>
 #include <raymath.h>
-#include "include/dyn.h"
 #include "defs.h"
 #include "include/exrand.h"
 
 bool debug_mode = false;
+
+Bullet bullets[BULLETS_LEN] = {0};
+Zombie zombies[ZOMBIES_LEN] = {0};
 
 int main() {
     exrand_random_seed();
@@ -39,7 +41,7 @@ int main() {
     }
 
     if (state.kind == StatePlay) {
-        for (usize i = 0; i < dynlen(state.play.textures); i++) {
+        for (size_t i = 0; i < TextureCount; i++) {
             UnloadTexture(state.play.textures[i]);
         }
     }

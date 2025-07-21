@@ -1,14 +1,8 @@
 #include <stdio.h>
-#include <math.h>
 #include <string.h>
-#include "include/dyn.h"
 #include "defs.h"
 #include "raylib.h"
 #include "raymath.h"
-
-dynimpl(Zombie, Zombie);
-dynimpl(Bullet, Bullet);
-dynimpl(Texture, Texture);
 
 Game game_init() {
     Texture player_stand_tex = LoadTexture("./src/assets/murray_player_stand.png");
@@ -29,7 +23,10 @@ Game game_init() {
         .zombie_speed = ZOMBIE_START_SPEED,
         .zombies_per_round = 6,
         .zombie_health = ZOMBIE_BASE_HEALTH,
-        .bullets = NULL,
+        .bullets = bullets,
+        .bullets_count = 0,
+        .zombies = zombies,
+        .zombies_count = 0,
         .textures = {
             [TexturePlayer] = player_stand_tex,
             [TextureZombie] = zombie_stand_tex,
@@ -39,13 +36,9 @@ Game game_init() {
         .in_round_transition = false,
     };
 
-    Zombie *zombies = NULL;
-
-    for (usize i = 0; i < game.zombies_per_round; i++) {
-        dynpush(Zombie, &zombies, zombie_spawn(game, zombie_stand_tex));
+    for (size_t i = 0; i < game.zombies_per_round; i++) {
+        PUSH(zombies, ZOMBIES_LEN, game.zombies_count, zombie_spawn(game, zombie_stand_tex));
     }
-
-    game.zombies = zombies;
 
     return game;
 }
@@ -55,7 +48,7 @@ void draw_hud(Game game) {
 
     // zombies left
     {
-        const char* zombies_left = TextFormat("Zombies: %zu", dynlen(game.zombies));
+        const char* zombies_left = TextFormat("Zombies: %zu", game.zombies_count);
         int font_size = 15;
         DrawText(zombies_left, WIDTH / 2.0f - (float)font_size * strlen(zombies_left) / 4, font_size, font_size, WHITE);
     }
@@ -63,7 +56,7 @@ void draw_hud(Game game) {
     // round
     {
         const char* round = TextFormat("%d", game.round);
-        u32 round_len = strlen(round);
+        uint32_t round_len = strlen(round);
 
         float font_size = 35.0f;
         float x = WIDTH - ((float)round_len) * font_size;
@@ -111,16 +104,12 @@ void game_draw(State state) {
     ClearBackground(BLACK);
     BeginMode2D(self.player.camera);
 
-    if (self.bullets != NULL) {
-        for (size_t i = 0; i < dynlen(self.bullets); i++) {
-            bullet_draw(self.bullets[i]);
-        }
+    for (size_t i = 0; i < self.bullets_count; i++) {
+        bullet_draw(self.bullets[i]);
     }
 
-    if (self.zombies != NULL) {
-        for (size_t i = 0; i < dynlen(self.zombies); i++) {
-            zombie_draw(self.zombies[i]);
-        }
+    for (size_t i = 0; i < self.zombies_count; i++) {
+        zombie_draw(self.zombies[i]);
     }
 
     player_draw(self.player);
@@ -141,50 +130,49 @@ void game_update(State *state) {
 
     player_update(state);
 
-    if (self->bullets != NULL) {
-        for (size_t i = 0; i < dynlen(self->bullets);) {
-            bool remove = bullet_update(&self->bullets[i], self->player);
-            if (remove) {
-                dynremove(Bullet, self->bullets, i);
-                continue;
-            }
+    for (size_t i = 0; i < self->bullets_count;) {
+        printf("i: %zu, bullet count: %zu\n", i, self->bullets_count);
 
-            // hurt and kill zombies.
-            // handle points
-            bool removed_bullet = false;
-            for (size_t j = 0; j < dynlen(self->zombies);) {
-                if (CheckCollisionRecs(self->bullets[i].shape, self->zombies[j].shape)) {
-                    self->zombies[j].health = (u32)Clamp((i32)(self->zombies[j].health - self->bullets[i].damage), 0.0f, self->zombies[j].health);
+        bool remove = bullet_update(&self->bullets[i], self->player);
+        if (remove) {
+            REMOVE(self->bullets, self->bullets_count, i);
+            continue;
+        }
 
-                    if (self->zombies[j].health == 0) {
-                        // zombie dead, remove zombie, add 100 points
-                        self->player.points += 100;
-                        dynremove(Zombie, self->zombies, j);
-                        continue;
-                    }
+        // hurt and kill zombies.
+        // handle points
+        bool removed_bullet = false;
+        for (size_t j = 0; j < self->zombies_count;) {
+            if (CheckCollisionRecs(self->bullets[i].shape, self->zombies[j].shape)) {
+                self->zombies[j].health = (uint32_t)Clamp((int32_t)(self->zombies[j].health - self->bullets[i].damage), 0.0f, self->zombies[j].health);
 
-                    // zombie lives, add 10 points, remove bullet
-                    self->player.points += 10;
-                    dynremove(Bullet, self->bullets, i);
-                    removed_bullet = true;
-                    j += 1;
+                if (self->zombies[j].health == 0) {
+                    // zombie dead, remove zombie, add 100 points
+                    self->player.points += 100;
+                    REMOVE(self->zombies, self->zombies_count, j);
                     continue;
                 }
 
-                j += 1;
+                // zombie lives, add 10 points, remove bullet
+                self->player.points += 10;
+                REMOVE(self->bullets, self->bullets_count, i);
+                removed_bullet = true;
+                break;
             }
 
-            if (removed_bullet) {
-                continue;
-            }
-
-            i += 1;
+            j += 1;
         }
+
+        if (removed_bullet) {
+            continue;
+        }
+
+        i += 1;
     }
 
     // round transition
     {
-        if (dynlen(self->zombies) == 0) {
+        if (self->zombies_count == 0) {
             if (!self->in_round_transition) {
                 self->in_round_transition = true;
                 self->round_transition = GetTime();
@@ -197,30 +185,30 @@ void game_update(State *state) {
 
                 self->zombie_speed = Clamp(self->zombie_speed + 0.2f, 0.0f, ZOMBIE_MAX_SPEED);
 
-                self->zombies_per_round = (usize)roundf(self->zombies_per_round * 1.2f);
+                self->zombies_per_round = (size_t)roundf(self->zombies_per_round * 1.2f);
                 self->zombie_health *= 1.5;
 
-                for (usize i = 0; i < self->zombies_per_round; i++) {
-                    dynpush(Zombie, &self->zombies, zombie_spawn(*self, self->textures[TextureZombie]));
+                for (size_t i = 0; i < self->zombies_per_round; i++) {
+                    PUSH(self->zombies, ZOMBIES_LEN, self->zombies_count, zombie_spawn(*self, self->textures[TextureZombie]));
                 }
             }
         }
     }
 
     // O(n^2) booooo
-    for (size_t i = 0; i < dynlen(self->zombies);) {
+    for (size_t i = 0; i < self->zombies_count;) {
         zombie_update(&self->zombies[i], state);
 
         // check if zombie has been meleed
         if (self->player.melee_area_active && CheckCollisionRecs(self->zombies[i].shape, self->player.melee_area)) {
-            self->zombies[i].health = (u32)Clamp((i32)(self->zombies[i].health - MELEE_DMG), 0.0f, self->zombies[i].health);
+            self->zombies[i].health = (uint32_t)Clamp((int32_t)(self->zombies[i].health - MELEE_DMG), 0.0f, self->zombies[i].health);
             if (self->zombies[i].health == 0) {
-                dynremove(Zombie, self->zombies, i);
+                REMOVE(self->zombies, self->zombies_count, i);
                 continue;
             }
         }
 
-        for (size_t j = 0; j < dynlen(self->zombies); j++) {
+        for (size_t j = 0; j < self->zombies_count; j++) {
             if (j == i) {
                 break;
             }
